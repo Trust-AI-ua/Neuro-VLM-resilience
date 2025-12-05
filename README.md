@@ -27,3 +27,19 @@ In the Overview diagram illustrated above, our MIA pipeline consists of four mai
 2. **Caption Generation**: models generate captions for member and non-member image-text sets
 3. **Similarity Analysis**: compute similarity of generated captions with ground-truth captions using MPNet and ROUGE-2
 4. **Membership Inference**: perform a black-box membership inference attack
+
+## Performance Comparison
+
+| Dataset | Model         | Threat Model | MPNet ↓ (Member) | MPNet ↓ (Non-Member) | ROUGE-2 ↓ (Member) | ROUGE-2 ↓ (Non-Member) | ROC-AUC ↑      |
+|---------|---------------|--------------|------------------|----------------------|--------------------|------------------------|----------------|
+| COCO    | BLIP          | Baseline     | 0.723            | 0.663                | 0.249              | 0.171                  | 94.00 ± 9.90   |
+|         |               | Neuro        | 0.797            | 0.793                | 0.425              | 0.380                  | 70.88 ± 18.95  |
+|         |               | Neuro++      | 0.698            | 0.687                | 0.319              | 0.312                  | 63.46 ± 10.88  |
+|         | PaliGemma 2   | Baseline     | 0.605            | 0.603                | 0.227              | 0.203                  | 70.86 ± 19.53  |
+|         |               | Neuro        | 0.717            | 0.712                | 0.111              | 0.102                  | 69.98 ± 13.48  |
+|         |               | Neuro++      | 0.735            | 0.732                | 0.338              | 0.318                  | 66.76 ± 13.57  |
+|         | ViT-GPT2      | Baseline     | 0.771            | 0.773                | 0.318              | 0.304                  | 55.51 ± 16.47  |
+|         |               | Neuro        | 0.773            | 0.782                | 0.357              | 0.373                  | 29.38 ± 10.58  |
+|         |               | Neuro++      | 0.775            | 0.776                | 0.357              | 0.368                  | 38.39 ± 10.28  |
+
+
