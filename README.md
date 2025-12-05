@@ -28,7 +28,7 @@ In the Overview diagram illustrated above, our MIA pipeline consists of four mai
 3. **Similarity Analysis**: compute similarity of generated captions with ground-truth captions using MPNet and ROUGE-2
 4. **Membership Inference**: perform a black-box membership inference attack
 
-## Performance Comparison
+## Performance Comparison among BASELINE and $\tau$-regularized Neuroscience-inspired Models on the COCO Dataset
 
 | Dataset | Model         | Threat Model | MPNet ↓ (Member) | MPNet ↓ (Non-Member) | ROUGE-2 ↓ (Member) | ROUGE-2 ↓ (Non-Member) | ROC-AUC ↑      |
 |---------|---------------|--------------|------------------|----------------------|--------------------|------------------------|----------------|
@@ -42,4 +42,4 @@ In the Overview diagram illustrated above, our MIA pipeline consists of four mai
 |         |               | Neuro        | 0.773            | 0.782                | 0.357              | 0.373                  | 29.38 ± 10.58  |
 |         |               | Neuro++      | 0.775            | 0.776                | 0.357              | 0.368                  | 38.39 ± 10.28  |
 
-
+Please see more detailed evaluation and model performance comparison in our [paper](https://arxiv.org/abs/2511.20710).
