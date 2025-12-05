@@ -43,3 +43,7 @@ In the Overview diagram illustrated above, our MIA pipeline consists of four mai
 |         |               | Neuro++      | 0.775            | 0.776                | 0.357              | 0.368                  | 38.39 ± 10.28  |
 
 Please see more detailed evaluation and model performance comparison in our [paper](https://arxiv.org/abs/2511.20710).
+
+---
+
+## Environment Setup
