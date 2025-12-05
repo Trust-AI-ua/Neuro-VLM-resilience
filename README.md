@@ -21,3 +21,7 @@ Our paper was inspired by and extends the **Reference Inference** attack type by
 
 ## The MIA Pipeline
 ![MIA Pipeline Overview Diagram](./imgs/Overview-diagram.jpg)
+
+In the Overview diagram illustrated above, our MIA pipeline consists of four main steps:
+1. **VLM Fine-tuning**: fine-tune pre-trained VLMs with topological regularization $(\tau)$
+2. 
