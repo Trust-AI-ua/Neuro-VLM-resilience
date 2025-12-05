@@ -20,4 +20,4 @@ David Amebley, Sayanton Dibbo, "[Are Neuro-Inspired Multi-Modal Vision-Language 
 Our paper was inspired by and extends the **Reference Inference** attack type by Hu, Yuke, et al. This codebase is also built on top of and extends the original **[Membership Inference Attacks Against Vision–Language Models](https://github.com/YukeHu/vlm_mia)** repository, in particular their **reference-based non-member attack** (`reference_non_member_inference.py`).
 
 ## The MIA Pipeline
-![plot](./imgs/Overview-diagram.pdf)
+![MIA Pipeline Overview Diagram](./imgs/Overview-diagram.jpg)
