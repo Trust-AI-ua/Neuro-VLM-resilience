@@ -48,18 +48,16 @@ Please see more detailed evaluation and model performance comparison in our [pap
 
 ## Environment Setup
 
-Use conda to isolate the project's dependencies. Example setup for a CPU or GPU machine:
+We recommend using conda to isolate the project's dependencies. An example setup for a CPU or GPU machine looks like this:
 
-```conda create -n neuro-vlm-resilience python=3.10```
-```conda activate neuro-vlm-resilience```
+```bash
+conda create -n neuro-vlm-resilience python=3.10
+conda activate neuro-vlm-resilience
 
-Install PyTorch (adjust CUDA build as needed; shown for CUDA 12.1)
+# Install PyTorch (adjust CUDA build as needed; shown for CUDA 12.1)
+pip install "torch>=2.1.0" "torchvision" --index-url [https://download.pytorch.org/whl/cu121](https://download.pytorch.org/whl/cu121)
 
-```pip install "torch>=2.1.0" "torchvision" --index-url https://download.pytorch.org/whl/cu121```
-
-Install core libraries for VLMs, datasets, and evaluation
-
-```
+# Install core libraries for VLMs, datasets, and evaluation
 pip install \
   transformers \
   sentence-transformers \
@@ -71,5 +69,4 @@ pip install \
   scikit-learn \
   tqdm \
   pillow
-
 ```
