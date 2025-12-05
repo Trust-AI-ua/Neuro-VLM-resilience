@@ -25,7 +25,7 @@ Our paper was inspired by and extends the **Reference Inference** attack type by
 In the Overview diagram illustrated above, our MIA pipeline consists of four main steps:
 1. **VLM Fine-tuning**: fine-tune pre-trained VLMs with topological regularization $(\tau)$
 2. **Caption Generation**: models generate captions for member and non-member image-text sets
-3. **Similarity Analysis**: compute similarity of generated captions with ground-truth captions using MPNet and ROUGE-2
+3. **Similarity Analysis**: compute similarity of generated captions with ground-truth captions using MPNet (semantic) and ROUGE-2 (lexical)
 4. **Membership Inference**: perform a black-box membership inference attack
 
 ## Performance Comparison among BASELINE and $\tau$-regularized Neuroscience-inspired Models on the COCO Dataset
@@ -141,3 +141,221 @@ python experiments/data/nocaps_prepare_splits.py \
 - `members.tsv`, `nonmembers.tsv`
 
 > **Note:** The created files will reflect the sizes specified in the script call: 360 images for training, 40 for validation, and 400 images each for the member and non-member sets.
+
+**CC3M**
+For CC3M, we use the following helper scripts:
+	- experiments/data/cc3m_make_splits.py
+	- experiments/data/cc3m_prepare_tsv.py
+
+You may use these example scripts to create your member/non-member splits and TSV files:
+```bash
+# Adjust args to your CC3M layout
+python experiments/data/cc3m_make_splits.py \
+  --images_dir data/cc3m/images \
+  --captions_json data/cc3m/captions.json \
+  --out_dir experiments/runs/cc3m/shared
+
+python experiments/data/cc3m_prepare_tsv.py \
+  --split_dir experiments/runs/cc3m/shared \
+  --out_dir experiments/runs/cc3m/shared
+```
+
+---
+### Running the Core Pipeline
+Below, we show an example you can follow and then adapt
+
+**Dataset**: COCO **Model**: BLIP **Threat Model/$\tau$-regularization level**: $\tau$ = 3 (NEURO++)
+We assume:
+```bash
+experiments/runs/coco/blip/
+  ├── train.tsv
+  ├── val.tsv
+  ├── members400_paths.txt
+  └── nonmembers400_paths.txt
+```
+
+**Fine-tune BLIP with $\tau$ = 3**
+```bash
+python experiments/train/train_blip_tau.py \
+  --train_tsv experiments/runs/coco/blip/train.tsv \
+  --val_tsv   experiments/runs/coco/blip/val.tsv \
+  --out_dir   experiments/runs/coco/blip/tau3 \
+  --epochs 1 \
+  --batch_size 16 \
+  --lr 1e-5 \
+  --tau 3 \
+  --device cuda
+```
+> This will create:
+```bash
+experiments/runs/coco/blip/tau3/checkpoints/
+  ├── config.json
+  ├── pytorch_model.bin / safetensors
+  └── tokenizer / processor configs
+```
+
+**Generate captions for member & non-member sets**
+```bash
+# Members
+python experiments/infer/caption_blip_from_dir.py \
+  --ckpt_dir   experiments/runs/coco/blip/tau3/checkpoints \
+  --images_txt experiments/runs/coco/blip/members400_paths.txt \
+  --out_json   experiments/runs/coco/blip/tau3/captions/blip_member_tau3.json \
+  --batch_size 16
+
+# Non-members
+python experiments/infer/caption_blip_from_dir.py \
+  --ckpt_dir   experiments/runs/coco/blip/tau3/checkpoints \
+  --images_txt experiments/runs/coco/blip/nonmembers400_paths.txt \
+  --out_json   experiments/runs/coco/blip/tau3/captions/blip_nonmember_tau3.json \
+  --batch_size 16
+```
+> Each JSON file is a list of entries like:
+```bash
+{
+  "image_path": ".../train2017/000000123456.jpg",
+  "image_id": "000000123456",
+  "caption": "a dog running on the grass"
+}
+```
+**Compute similarity (MPNet & ROUGE-2)**
+
+>We compute similarity against COCO references. This will:
+- Use MPNet (sentence-transformers/all-mpnet-base-v2) to compute embedding-based cosine similarities.
+- Use ROUGE-2 (bigram F1) for lexical overlap.
+- Write per-item similarity JSON used by the attack.
+- Append mean stats to `experiments/results/similarity_summary.csv`.
+
+```bash
+# Member
+python experiments/infer/compute_similarity_blip_coco.py \
+  --captions_json experiments/runs/coco/blip/tau3/captions/blip_member_tau3.json \
+  --coco_ann_dir  data/coco/annotations \
+  --set           member \
+  --tau           3 \
+  --out_json      experiments/runs/coco/blip/tau3/sim/blip_tau3_member.sim.authors.json \
+  --temperature   0.1
+
+# Non-member
+python experiments/infer/compute_similarity_blip_coco.py \
+  --captions_json experiments/runs/coco/blip/tau3/captions/blip_nonmember_tau3.json \
+  --coco_ann_dir  data/coco/annotations \
+  --set           nonmember \
+  --tau           3 \
+  --out_json      experiments/runs/coco/blip/tau3/sim/blip_tau3_nonmember.sim.authors.json \
+  --temperature   0.1
+```
+
+**Run reference-based MIA**
+We adapt the reference-based non-member inference from code/vlm_mia/reference_non_member_inference.py and wrap it with `experiments/attack/run_similarity_attack.py`.
+
+We evaluate multiple quantile thresholds (granularity) and metrics (embedding_mpn, rouge2_f):
+
+```bash
+# MPNet-based attack
+python experiments/attack/run_similarity_attack.py \
+  --member_sim   experiments/runs/coco/blip/tau3/sim/blip_tau3_member.sim.authors.json \
+  --nonmember_sim experiments/runs/coco/blip/tau3/sim/blip_tau3_nonmember.sim.authors.json \
+  --granularity  10,50,100,150,200 \
+  --metric       embedding_mpn \
+  --temperature  0.1 \
+  --append_csv   experiments/results/attack_accuracy.csv \
+  --tau          3 \
+  --dataset      COCO \
+  --model        BLIP
+
+# ROUGE-2-based attack
+python experiments/attack/run_similarity_attack.py \
+  --member_sim   experiments/runs/coco/blip/tau3/sim/blip_tau3_member.sim.authors.json \
+  --nonmember_sim experiments/runs/coco/blip/tau3/sim/blip_tau3_nonmember.sim.authors.json \
+  --granularity  10,50,100,150,200 \
+  --metric       rouge2_f \
+  --temperature  0.1 \
+  --append_csv   experiments/results/attack_accuracy.csv \
+  --tau          3 \
+  --dataset      COCO \
+  --model        BLIP
+```
+>This will append the results rows to `experiments/results/attack_accuracy.csv`. **Note:** Although the attack results are saved in `attack_accuracy.csv`, the actual metric used in the code is **ROC-AUC**.
+>You can repeat this pipeline for $\tau \in$ {0, 2, 3} and for other datasets (COCO/NoCaps/CC3M) and models (BLIP, PaliGemma2, ViT-GPT2).
+
+**Other Datasets & Models**
+**CC3M**
+
+After preparing `experiments/runs/cc3m/shared/` as described above, you may run these examples:
+- Fine-tune ViT-GPT2:
+```bash
+python experiments/train/train_vitgpt2_tau.py \
+  --train_tsv experiments/runs/cc3m/shared/train.tsv \
+  --val_tsv   experiments/runs/cc3m/shared/val.tsv \
+  --out_dir   experiments/runs/cc3m/vitgpt2/tau3 \
+  --epochs    1 \
+  --batch_size 16 \
+  --tau       3
+```
+- Generate captions:
+```bash
+python experiments/infer/caption_vitgpt2.py \
+  --checkpoint_dir experiments/runs/cc3m/vitgpt2/tau3/checkpoints \
+  --image_list     experiments/runs/cc3m/shared/members400_paths.txt \
+  --out_json       experiments/runs/cc3m/vitgpt2/tau3/captions/vitgpt2_member_tau3.json
+
+python experiments/infer/caption_vitgpt2.py \
+  --checkpoint_dir experiments/runs/cc3m/vitgpt2/tau3/checkpoints \
+  --image_list     experiments/runs/cc3m/shared/nonmembers400_paths.txt \
+  --out_json       experiments/runs/cc3m/vitgpt2/tau3/captions/vitgpt2_nonmember_tau3.json
+```
+
+- Compute similarity (member set):
+```bash
+python experiments/infer/compute_similarity_from_all_tsv.py \
+  --captions_json  experiments/runs/cc3m/vitgpt2/tau3/captions/vitgpt2_member_tau3.json \
+  --refs_tsv       experiments/runs/cc3m/shared/all_refs.tsv \
+  --set            member \
+  --dataset        CC3M \
+  --model          ViT-GPT2 \
+  --tau            3 \
+  --out_json       experiments/runs/cc3m/vitgpt2/tau3/sim/vitgpt2_tau3_member.sim.authors.json \
+  --temperature    0.1
+```
+>Replace the member value for the --set argument with `nonmember` and run for non-members. Proceed to run `run_similarity_attack.py` as before for the final attack step.
+
+**NoCaps & PaliGemma2**
+- Fine-tune:
+```bash
+python experiments/train/train_paligemma_sft.py \
+  --train_tsv experiments/runs/nocaps/shared/train.tsv \
+  --val_tsv   experiments/runs/nocaps/shared/val.tsv \
+  --out_dir   experiments/runs/nocaps/paligemma2/tau3 \
+  --epochs    1 \
+  --batch_size 16 \
+  --tau       3
+```
+
+> - Generate captions using `gen_caps_paligemma.py`.
+> - Compute similarity using `compute_similarity_paligemma_nocaps.py`.
+> - Run `run_similarity_attack.py` as before.
+
+#### Reproducing Tables & Figures
+
+We aggregate:
+ - **Similarity means** (MPNet, ROUGE-2; member vs non-member) from
+`experiments/results/similarity_summary.csv`.
+ - **Attack performance** (ROC-AUC across quantiles) from
+`experiments/results/attack_accuracy.csv`.
+
+We provide table/plot scripts under:
+```bash
+experiments/results/plots/
+experiments/results/plots/tables/
+```
+
+<br> **If you find this repository helpful to your research, please consider citing our work:** <br>
+```
+@article{amebley2025neuro,
+  title   = {Are Neuro-Inspired Multi-Modal Vision-Language Models Resilient to Membership Inference Privacy Leakage?},
+  author  = {Amebley, David and Dibbo, Sayanton},
+  journal = {arXiv preprint arXiv:2511.20710},
+  year    = {2025}
+}
+```
