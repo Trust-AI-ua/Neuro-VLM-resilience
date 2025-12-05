@@ -135,9 +135,9 @@ python experiments/data/nocaps_prepare_splits.py \
   --seed 42
 ```
 > This script will create the following files under `experiments/runs/nocaps/shared/`:
-	- `train.tsv`, `val.tsv`
-	- `members_paths.txt`, `nonmembers_paths.txt`
-	- `members_ids.txt`, `nonmembers_ids.txt`
-	- `members.tsv`, `nonmembers.tsv`
+- `train.tsv`, `val.tsv`
+- `members_paths.txt`, `nonmembers_paths.txt`
+- `members_ids.txt`, `nonmembers_ids.txt`
+- `members.tsv`, `nonmembers.tsv`
 
 > **Note:** The created files will reflect the sizes specified in the script call: 360 images for training, 40 for validation, and 400 images each for the member and non-member sets.
