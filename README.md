@@ -247,6 +247,7 @@ python experiments/infer/compute_similarity_blip_coco.py \
 ```
 
 **Run reference-based MIA**
+
 We adapt the reference-based non-member inference from code/vlm_mia/reference_non_member_inference.py and wrap it with `experiments/attack/run_similarity_attack.py`.
 
 We evaluate multiple quantile thresholds (granularity) and metrics (embedding_mpn, rouge2_f):
