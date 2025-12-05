@@ -24,4 +24,6 @@ Our paper was inspired by and extends the **Reference Inference** attack type by
 
 In the Overview diagram illustrated above, our MIA pipeline consists of four main steps:
 1. **VLM Fine-tuning**: fine-tune pre-trained VLMs with topological regularization $(\tau)$
-2. 
+2. **Caption Generation**: models generate captions for member and non-member image-text sets
+3. **Similarity Analysis**: compute similarity of generated captions with ground-truth captions using MPNet and ROUGE-2
+4. **Membership Inference**: perform a black-box membership inference attack
