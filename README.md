@@ -70,3 +70,74 @@ pip install \
   tqdm \
   pillow
 ```
+
+#### Hugging Face Models
+We rely on Hugging Face models for:
+- BLIP
+- PaliGemma-2
+- ViT-GPT2
+- MPNet (sentence-transformers/all-mpnet-base-v2)
+
+If you are using models that require auth, log in:
+```bash
+huggingface-cli login
+```
+
+#### Datasets & Preprocessing
+**COCO**
+Expected layout (relative to repo root):
+
+```bash
+data/coco/
+├── train2017/
+│   ├── 000000000009.jpg
+│   ├── ...
+└── annotations/
+    ├── captions_train2017.json
+    └── captions_val2017.json
+```
+
+We also maintain COCO-specific experiment splits under:
+
+```bash
+experiments/runs/coco/blip/
+  ├── train.tsv
+  ├── val.tsv
+  ├── members400_paths.txt
+  └── nonmembers400_paths.txt
+```
+
+If you want to replicate our COCO splits, you can either:
+- Use the provided TSVs / path files, or
+- Implement your own splitting strategy and adjust the train_*.py / caption_*.py calls accordingly.
+
+**NoCaps**
+Expected layout:
+```bash
+data/nocaps/
+├── images/
+│   └── val/
+│       ├── *.jpg
+└── captions/
+    └── <your_nocaps_captions.json>
+```
+
+We also provide a helper to create member / non-member splits and TSVs:
+```bash
+python experiments/data/nocaps_prepare_splits.py \
+  --images_dir data/nocaps/images/val \
+  --captions_json data/nocaps/captions/<nocaps_captions.json> \
+  --out_dir experiments/runs/nocaps/shared \
+  --train_n 360 \
+  --val_n 40 \
+  --members_n 400 \
+  --nonmembers_n 400 \
+  --seed 42
+```
+> This script will create the following files under `experiments/runs/nocaps/shared/`:
+	- `train.tsv`, `val.tsv`
+	- `members_paths.txt`, `nonmembers_paths.txt`
+	- `members_ids.txt`, `nonmembers_ids.txt`
+	- `members.tsv`, `nonmembers.tsv`
+
+> **Note:** The created files will reflect the sizes specified in the script call: 360 images for training, 40 for validation, and 400 images each for the member and non-member sets.
