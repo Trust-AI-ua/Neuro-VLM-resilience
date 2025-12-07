@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-AUTHORS_ATTACK = REPO_ROOT / "code/vlm_mia/reference_non_member_inference.py"
+AUTHORS_ATTACK = REPO_ROOT / "experiments/reference_non_member_inference.py"
 
 def norm_metric(m):
     """Normalize metric aliases to the attack script's expected identifiers."""
