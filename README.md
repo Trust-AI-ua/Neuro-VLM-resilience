@@ -13,10 +13,10 @@ We measure similarity using:
 - **ROUGE-2** (lexical overlap)
 
 and report **reference-based MIA performance** (ROC-AUC).
-
+<!--
 More details can be found in our paper:
 David Amebley, Sayanton Dibbo, "[Are Neuro-Inspired Multi-Modal Vision-Language Models Resilient to Membership Inference Privacy Leakage?](https://arxiv.org/abs/2511.20710)"
-
+-->
 Our paper was inspired by and extends the **Reference Inference** attack type by Hu, Yuke, et al. This codebase is also built on top of and extends the original **[Membership Inference Attacks Against Vision–Language Models](https://github.com/YukeHu/vlm_mia)** repository, in particular their **reference-based non-member attack** (`reference_non_member_inference.py`).
 
 ## The MIA Pipeline
@@ -42,7 +42,7 @@ In the Overview diagram illustrated above, our MIA pipeline consists of four mai
 |         |               | Neuro        | 0.773            | 0.782                | 0.357              | 0.373                  | 29.38 ± 10.58  |
 |         |               | Neuro++      | 0.775            | 0.776                | 0.357              | 0.368                  | 38.39 ± 10.28  |
 
-Please see more detailed evaluation and model performance comparison in our [paper](https://arxiv.org/abs/2511.20710).
+<!-- Please see more detailed evaluation and model performance comparison in our [paper](https://arxiv.org/abs/2511.20710). -->
 
 ---
 
@@ -351,7 +351,7 @@ experiments/results/plots/
 experiments/results/plots/tables/
 ```
 
-<br> **If you find this repository helpful to your research, please consider citing our work:** <br>
+<!-- <br> **If you find this repository helpful to your research, please consider citing our work:** <br>
 ```
 @article{amebley2025neuro,
   title   = {Are Neuro-Inspired Multi-Modal Vision-Language Models Resilient to Membership Inference Privacy Leakage?},
@@ -359,4 +359,4 @@ experiments/results/plots/tables/
   journal = {arXiv preprint arXiv:2511.20710},
   year    = {2025}
 }
-```
+``` -->
