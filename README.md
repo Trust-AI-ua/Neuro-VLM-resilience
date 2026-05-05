@@ -55,18 +55,20 @@ conda create -n neuro-vlm-resilience python=3.10
 conda activate neuro-vlm-resilience
 
 # Install PyTorch (adjust CUDA build as needed; shown for CUDA 12.1)
-pip install "torch>=2.1.0" "torchvision" --index-url [https://download.pytorch.org/whl/cu121](https://download.pytorch.org/whl/cu121)
+pip install "torch>=2.1.0" "torchvision" --index-url https://download.pytorch.org/whl/cu121
 
 # Install core libraries for VLMs, datasets, and evaluation
 pip install \
   transformers \
   sentence-transformers \
   accelerate \
+  bitsandbytes \
   datasets \
   pandas \
   numpy \
   matplotlib \
   scikit-learn \
+  rouge-score \
   tqdm \
   pillow
 ```
@@ -104,12 +106,12 @@ experiments/runs/coco/blip/
   ├── train.tsv
   ├── val.tsv
   ├── members400_paths.txt
-  └── nonmembers400_paths.txt
+  ├── nonmembers400_paths.txt
+  ├── members400_ids.txt
+  └── nonmembers400_ids.txt
 ```
 
-If you want to replicate our COCO splits, you can either:
-- Use the provided TSVs / path files, or
-- Implement your own splitting strategy and adjust the train_*.py / caption_*.py calls accordingly.
+These split files are pre-committed to the repo and are shared across all three models (BLIP, ViT-GPT2, PaliGemma 2) for COCO. **To reproduce the paper's results, use these files as-is** rather than re-generating the splits.
 
 **NoCaps**
 Expected layout:
@@ -138,27 +140,30 @@ python experiments/data/nocaps_prepare_splits.py \
 - `train.tsv`, `val.tsv`
 - `members_paths.txt`, `nonmembers_paths.txt`
 - `members_ids.txt`, `nonmembers_ids.txt`
-- `members.tsv`, `nonmembers.tsv`
+- `members.tsv`, `nonmembers.tsv`, `all_refs.tsv`
 
 > **Note:** The created files will reflect the sizes specified in the script call: 360 images for training, 40 for validation, and 400 images each for the member and non-member sets.
 
 **CC3M**
 For CC3M, we use the following helper scripts:
-	- experiments/data/cc3m_make_splits.py
-	- experiments/data/cc3m_prepare_tsv.py
+- `experiments/data/cc3m_prepare_tsv.py`
+- `experiments/data/cc3m_make_splits.py`
 
-You may use these example scripts to create your member/non-member splits and TSV files:
+CC3M is accessed via HuggingFace's streaming API. The reference TSV (`all_refs.tsv`) is large and is not committed to the repo; it must be generated before running CC3M experiments.
+
 ```bash
-# Adjust args to your CC3M layout
-python experiments/data/cc3m_make_splits.py \
-  --images_dir data/cc3m/images \
-  --captions_json data/cc3m/captions.json \
-  --out_dir experiments/runs/cc3m/shared
-
+# Step 1 — Build the reference TSV (streams from HuggingFace; this may take some time)
 python experiments/data/cc3m_prepare_tsv.py \
-  --split_dir experiments/runs/cc3m/shared \
-  --out_dir experiments/runs/cc3m/shared
+  --out_tsv experiments/runs/cc3m/shared/all_refs.tsv
+
+# Step 2 — Create member/non-member splits
+python experiments/data/cc3m_make_splits.py \
+  --all_tsv experiments/runs/cc3m/shared/all_refs.tsv \
+  --out_dir experiments/runs/cc3m \
+  --seed 42
 ```
+
+This creates `train.tsv`, `val.tsv`, `members400_paths.txt`, `nonmembers400_paths.txt` and related files under `experiments/runs/cc3m/shared/`.
 
 ---
 ### Running the Core Pipeline
@@ -229,26 +234,24 @@ python experiments/infer/caption_blip_from_dir.py \
 ```bash
 # Member
 python experiments/infer/compute_similarity_blip_coco.py \
-  --captions_json experiments/runs/coco/blip/tau3/captions/blip_member_tau3.json \
-  --coco_ann_dir  data/coco/annotations \
-  --set           member \
-  --tau           3 \
-  --out_json      experiments/runs/coco/blip/tau3/sim/blip_tau3_member.sim.authors.json \
-  --temperature   0.1
+  --caps_json experiments/runs/coco/blip/tau3/captions/blip_member_tau3.json \
+  --coco_dir  data/coco/annotations \
+  --split     member \
+  --tau       3 \
+  --out_json  experiments/runs/coco/blip/tau3/sim/blip_tau3_member.sim.authors.json
 
 # Non-member
 python experiments/infer/compute_similarity_blip_coco.py \
-  --captions_json experiments/runs/coco/blip/tau3/captions/blip_nonmember_tau3.json \
-  --coco_ann_dir  data/coco/annotations \
-  --set           nonmember \
-  --tau           3 \
-  --out_json      experiments/runs/coco/blip/tau3/sim/blip_tau3_nonmember.sim.authors.json \
-  --temperature   0.1
+  --caps_json experiments/runs/coco/blip/tau3/captions/blip_nonmember_tau3.json \
+  --coco_dir  data/coco/annotations \
+  --split     nonmember \
+  --tau       3 \
+  --out_json  experiments/runs/coco/blip/tau3/sim/blip_tau3_nonmember.sim.authors.json
 ```
 
 **Run reference-based MIA**
 
-We adapt the reference-based non-member inference from code/vlm_mia/reference_non_member_inference.py and wrap it with `experiments/attack/run_similarity_attack.py`.
+We adapt the reference-based non-member inference from `experiments/reference_non_member_inference.py` and wrap it with `experiments/attack/run_similarity_attack.py`.
 
 We evaluate multiple quantile thresholds (granularity) and metrics (embedding_mpn, rouge2_f):
 
@@ -281,6 +284,94 @@ python experiments/attack/run_similarity_attack.py \
 >You can repeat this pipeline for $\tau \in$ {0, 2, 3} and for other datasets (COCO/NoCaps/CC3M) and models (BLIP, PaliGemma2, ViT-GPT2).
 
 **Other Datasets & Models**
+
+All three models share the same COCO split files (`experiments/runs/coco/blip/train.tsv`, `members400_paths.txt`, etc.). Only the training script, caption script, and similarity script differ per model.
+
+**COCO & ViT-GPT2**
+```bash
+# Fine-tune
+python experiments/train/train_vitgpt2_tau.py \
+  --train_tsv experiments/runs/coco/blip/train.tsv \
+  --val_tsv   experiments/runs/coco/blip/val.tsv \
+  --out_dir   experiments/runs/coco/vitgpt2/tau3 \
+  --epochs    1 \
+  --batch_size 16 \
+  --lr        1e-5 \
+  --tau       3
+
+# Generate captions
+python experiments/infer/caption_vitgpt2.py \
+  --checkpoint_dir experiments/runs/coco/vitgpt2/tau3/checkpoints \
+  --image_list     experiments/runs/coco/blip/members400_paths.txt \
+  --out_json       experiments/runs/coco/vitgpt2/tau3/captions/vitgpt2_member_tau3.json
+
+python experiments/infer/caption_vitgpt2.py \
+  --checkpoint_dir experiments/runs/coco/vitgpt2/tau3/checkpoints \
+  --image_list     experiments/runs/coco/blip/nonmembers400_paths.txt \
+  --out_json       experiments/runs/coco/vitgpt2/tau3/captions/vitgpt2_nonmember_tau3.json
+
+# Compute similarity
+python experiments/infer/compute_similarity_vitgpt2_coco.py \
+  --caps_json experiments/runs/coco/vitgpt2/tau3/captions/vitgpt2_member_tau3.json \
+  --coco_dir  data/coco/annotations \
+  --split     member \
+  --tau       3 \
+  --out_json  experiments/runs/coco/vitgpt2/tau3/sim/vitgpt2_tau3_member.sim.authors.json
+
+python experiments/infer/compute_similarity_vitgpt2_coco.py \
+  --caps_json experiments/runs/coco/vitgpt2/tau3/captions/vitgpt2_nonmember_tau3.json \
+  --coco_dir  data/coco/annotations \
+  --split     nonmember \
+  --tau       3 \
+  --out_json  experiments/runs/coco/vitgpt2/tau3/sim/vitgpt2_tau3_nonmember.sim.authors.json
+```
+Then run `run_similarity_attack.py` with `--model ViT-GPT2` as shown above.
+
+**COCO & PaliGemma 2**
+
+> **Note:** PaliGemma 2's τ-regularization is implemented as label smoothing (clipped to [0, 0.2]) plus logit L2 regularization, rather than the variance penalty on decoder hidden states used by BLIP and ViT-GPT2, because PaliGemma's decoder internals are not directly accessible in the same way.
+
+```bash
+# Fine-tune
+python experiments/train/train_paligemma_sft.py \
+  --train_tsv experiments/runs/coco/blip/train.tsv \
+  --val_tsv   experiments/runs/coco/blip/val.tsv \
+  --out_dir   experiments/runs/coco/paligemma/tau3 \
+  --model_id  google/paligemma2-3b-mix-224 \
+  --epochs    1 \
+  --lr        1e-5 \
+  --tau       3
+
+# Generate captions
+python experiments/infer/gen_caps_paligemma.py \
+  --ckpt_dir   experiments/runs/coco/paligemma/tau3/checkpoints \
+  --paths_file experiments/runs/coco/blip/members400_paths.txt \
+  --out_json   experiments/runs/coco/paligemma/tau3/captions/paligemma_member_tau3.json \
+  --batch      4
+
+python experiments/infer/gen_caps_paligemma.py \
+  --ckpt_dir   experiments/runs/coco/paligemma/tau3/checkpoints \
+  --paths_file experiments/runs/coco/blip/nonmembers400_paths.txt \
+  --out_json   experiments/runs/coco/paligemma/tau3/captions/paligemma_nonmember_tau3.json \
+  --batch      4
+
+# Compute similarity
+python experiments/infer/compute_similarity_paligemma_coco.py \
+  --caps_json experiments/runs/coco/paligemma/tau3/captions/paligemma_member_tau3.json \
+  --coco_dir  data/coco/annotations \
+  --split     member \
+  --tau       3 \
+  --out_json  experiments/runs/coco/paligemma/tau3/sim/paligemma_tau3_member.sim.authors.json
+
+python experiments/infer/compute_similarity_paligemma_coco.py \
+  --caps_json experiments/runs/coco/paligemma/tau3/captions/paligemma_nonmember_tau3.json \
+  --coco_dir  data/coco/annotations \
+  --split     nonmember \
+  --tau       3 \
+  --out_json  experiments/runs/coco/paligemma/tau3/sim/paligemma_tau3_nonmember.sim.authors.json
+```
+Then run `run_similarity_attack.py` with `--model PaliGemma2` as shown above.
+
 **CC3M**
 
 After preparing `experiments/runs/cc3m/shared/` as described above, you may run these examples:
@@ -307,19 +398,27 @@ python experiments/infer/caption_vitgpt2.py \
   --out_json       experiments/runs/cc3m/vitgpt2/tau3/captions/vitgpt2_nonmember_tau3.json
 ```
 
-- Compute similarity (member set):
+- Compute similarity (member and non-member):
 ```bash
 python experiments/infer/compute_similarity_from_all_tsv.py \
-  --captions_json  experiments/runs/cc3m/vitgpt2/tau3/captions/vitgpt2_member_tau3.json \
-  --refs_tsv       experiments/runs/cc3m/shared/all_refs.tsv \
-  --set            member \
-  --dataset        CC3M \
-  --model          ViT-GPT2 \
-  --tau            3 \
-  --out_json       experiments/runs/cc3m/vitgpt2/tau3/sim/vitgpt2_tau3_member.sim.authors.json \
-  --temperature    0.1
+  --caps_json experiments/runs/cc3m/vitgpt2/tau3/captions/vitgpt2_member_tau3.json \
+  --all_tsv   experiments/runs/cc3m/shared/all_refs.tsv \
+  --split     member \
+  --dataset   CC3M \
+  --model     ViT-GPT2 \
+  --tau       3 \
+  --out_json  experiments/runs/cc3m/vitgpt2/tau3/sim/vitgpt2_tau3_member.sim.authors.json
+
+python experiments/infer/compute_similarity_from_all_tsv.py \
+  --caps_json experiments/runs/cc3m/vitgpt2/tau3/captions/vitgpt2_nonmember_tau3.json \
+  --all_tsv   experiments/runs/cc3m/shared/all_refs.tsv \
+  --split     nonmember \
+  --dataset   CC3M \
+  --model     ViT-GPT2 \
+  --tau       3 \
+  --out_json  experiments/runs/cc3m/vitgpt2/tau3/sim/vitgpt2_tau3_nonmember.sim.authors.json
 ```
->Replace the member value for the --set argument with `nonmember` and run for non-members. Proceed to run `run_similarity_attack.py` as before for the final attack step.
+Then run `run_similarity_attack.py` as before for the final attack step. The same `compute_similarity_from_all_tsv.py` script is used for BLIP and PaliGemma 2 on CC3M, substituting the appropriate caption paths and `--model` value.
 
 **NoCaps & PaliGemma2**
 - Fine-tune:
@@ -328,14 +427,24 @@ python experiments/train/train_paligemma_sft.py \
   --train_tsv experiments/runs/nocaps/shared/train.tsv \
   --val_tsv   experiments/runs/nocaps/shared/val.tsv \
   --out_dir   experiments/runs/nocaps/paligemma2/tau3 \
+  --model_id  google/paligemma2-3b-mix-224 \
   --epochs    1 \
   --batch_size 16 \
   --tau       3
 ```
 
-> - Generate captions using `gen_caps_paligemma.py`.
-> - Compute similarity using `compute_similarity_paligemma_nocaps.py`.
-> - Run `run_similarity_attack.py` as before.
+- Generate captions using `gen_caps_paligemma.py`, pointing `--paths_file` to `experiments/runs/nocaps/shared/members400_paths.txt` (and non-members).
+- Compute similarity using `compute_similarity_paligemma_nocaps.py`:
+```bash
+python experiments/infer/compute_similarity_paligemma_nocaps.py \
+  --captions_json experiments/runs/nocaps/paligemma2/tau3/captions/paligemma_member_tau3.json \
+  --all_tsv       experiments/runs/nocaps/shared/all_refs.tsv \
+  --set           member \
+  --tau           3 \
+  --out_json      experiments/runs/nocaps/paligemma2/tau3/sim/paligemma_tau3_member.sim.authors.json
+```
+For BLIP and ViT-GPT2 on NoCaps, use `compute_similarity_from_all_tsv.py` with the same `--all_tsv` path and the appropriate `--model` value.
+- Run `run_similarity_attack.py` as before.
 
 #### Reproducing Tables & Figures
 
@@ -345,10 +454,12 @@ We aggregate:
  - **Attack performance** (ROC-AUC across quantiles) from
 `experiments/results/attack_accuracy.csv`.
 
-We provide table/plot scripts under:
+We provide table/plot scripts under `experiments/results/`:
 ```bash
-experiments/results/plots/
-experiments/results/plots/tables/
+python experiments/results/plot_attack_accuracy_by_dataset.py
+python experiments/results/plot_similarity_means_by_dataset.py
+python experiments/results/plot_mia_table_dataset.py
+python experiments/results/plot_ablation_attack_accuracy.py
 ```
 
 <!-- <br> **If you find this repository helpful to your research, please consider citing our work:** <br>
