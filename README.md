@@ -144,12 +144,14 @@ python experiments/data/nocaps_prepare_splits.py \
 
 > **Note:** The created files will reflect the sizes specified in the script call: 360 images for training, 40 for validation, and 400 images each for the member and non-member sets.
 
+> **The split files listed above have been pre-committed to the repo under `experiments/runs/nocaps/shared/` and can be used without running the provided script.**
+
 **CC3M**
 For CC3M, we use the following helper scripts:
 - `experiments/data/cc3m_prepare_tsv.py`
 - `experiments/data/cc3m_make_splits.py`
 
-CC3M is accessed via HuggingFace's streaming API. The reference TSV (`all_refs.tsv`) is large and is not committed to the repo; it must be generated before running CC3M experiments.
+The split files and `all_refs.tsv` for CC3M are pre-committed to the repo under `experiments/runs/cc3m/shared/` and can be used directly. However, you can run the scripts below if you need to regenerate them.
 
 ```bash
 # Step 1 — Build the reference TSV (streams from HuggingFace; this may take some time)
