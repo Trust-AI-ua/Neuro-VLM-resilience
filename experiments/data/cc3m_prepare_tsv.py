@@ -7,7 +7,7 @@ from pathlib import Path
 
 from datasets import load_dataset
 
-ROOT = Path(__file__).resolve().parents[2] / "runs" / "cc3m"
+ROOT = Path(__file__).resolve().parents[1] / "runs" / "cc3m"
 OUT_TSV = ROOT / "shared" / "all.tsv"
 OUT_TSV.parent.mkdir(parents=True, exist_ok=True)
 

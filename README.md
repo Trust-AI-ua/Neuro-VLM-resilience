@@ -118,16 +118,16 @@ Expected layout:
 ```bash
 data/nocaps/
 ├── images/
-│   └── val/
-│       ├── *.jpg
+│   ├── 0013ea2087020901.jpg
+│   └── ...
 └── captions/
-    └── <your_nocaps_captions.json>
+    └── <nocaps_captions.json>
 ```
 
 We also provide a helper to create member / non-member splits and TSVs:
 ```bash
 python experiments/data/nocaps_prepare_splits.py \
-  --images_dir data/nocaps/images/val \
+  --images_dir data/nocaps/images \
   --captions_json data/nocaps/captions/<nocaps_captions.json> \
   --out_dir experiments/runs/nocaps/shared \
   --train_n 360 \
@@ -166,6 +166,21 @@ python experiments/data/cc3m_make_splits.py \
 ```
 
 This creates `train.tsv`, `val.tsv`, `members400_paths.txt`, `nonmembers400_paths.txt` and related files under `experiments/runs/cc3m/shared/`.
+
+---
+### Image Path Setup
+
+The pre-committed split files expect COCO images at `data/coco/train2017/` and NoCaps images at `data/nocaps/images/`, both relative to the repo root. Download the datasets and place them there, then run commands from the repo root.
+
+If your datasets are stored elsewhere, run once before starting:
+
+```bash
+python fix_paths.py \
+  --coco_dir   /path/to/coco/train2017 \
+  --nocaps_dir /path/to/nocaps/images
+```
+
+CC3M images are downloaded automatically into `experiments/runs/cc3m/shared/images/` and require no path setup.
 
 ---
 ### Running the Core Pipeline

@@ -15,7 +15,7 @@ from urllib.error import HTTPError, URLError
 
 from PIL import Image
 
-ROOT = Path(__file__).resolve().parents[2] / "runs" / "cc3m"
+ROOT = Path(__file__).resolve().parents[1] / "runs" / "cc3m"
 ALL_TSV = ROOT / "shared" / "all.tsv"
 IMG_DIR = ROOT / "shared" / "images"
 IMG_DIR.mkdir(parents=True, exist_ok=True)
