@@ -479,7 +479,7 @@ python experiments/results/plot_mia_table_dataset.py
 python experiments/results/plot_ablation_attack_accuracy.py
 ```
 
-<!-- <br> **If you find this repository helpful to your research, please consider citing our work:** <br>
+<br> **If you find this repository helpful to your research, please consider citing our work:** <br>
 ```
 @article{amebley2025neuro,
   title   = {Are Neuro-Inspired Multi-Modal Vision-Language Models Resilient to Membership Inference Privacy Leakage?},
@@ -487,4 +487,4 @@ python experiments/results/plot_ablation_attack_accuracy.py
   journal = {arXiv preprint arXiv:2511.20710},
   year    = {2025}
 }
-``` -->
+```
